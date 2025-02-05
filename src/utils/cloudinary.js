@@ -27,6 +27,23 @@ import fs from "fs";
         }
     }
 
-    export {uploadOnCloudinary};
+    const extractPublicIdFromUrl = (url) => {
+        // Split the URL and extract the public ID
+        const segments = url.split('/');
+        const publicIdWithVersion = segments[segments.length - 1].split('.')[0];
+        return publicIdWithVersion;
+      };
+
+    const deleteOnCloudinary=async(remotefile)=>{
+        try {
+            const publicId = extractPublicIdFromUrl(remotefile);
+            const response = await cloudinary.uploader.destroy(publicId);
+            }catch(err){
+             console.error('Error while deleting image from Cloudinary:', err);
+             }
+    }
+
+
+    export {uploadOnCloudinary ,deleteOnCloudinary};
  
    

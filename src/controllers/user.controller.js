@@ -1,7 +1,7 @@
 import {asyncHandler} from "../utils/asyncHandler.js";
 import {ApiError} from "../utils/ApiError.js";
 import {User} from "../models/user.models.js";
-import {uploadOnCloudinary} from "../utils/cloudinary.js";
+import {uploadOnCloudinary , deleteOnCloudinary} from "../utils/cloudinary.js";
 import {ApiResponse} from "../utils/ApiResponse.js";
 import  jwt from "jsonwebtoken";
 
@@ -156,8 +156,8 @@ const logoutUser=asyncHandler(async(req,res)=>{
    await  User.findByIdAndUpdate(
       req.user._id,
       {
-          $set:{
-            refreshToken:undefined
+          $unset:{
+            refreshToken:1 // this removes the field from document
           }
       },
       {
@@ -179,7 +179,7 @@ const logoutUser=asyncHandler(async(req,res)=>{
 })
 
 const refreshAccessToken=asyncHandler(async(req,res)=>{
-  const incomingRefreshToken = req.cookies?.refreshTokenToken || req.body.refreshToken;
+  const incomingRefreshToken = req.cookies?.refreshToken || req.body.refreshToken;
 
   if(!incomingRefreshToken){
     throw new ApiError(401,"unauthorized request")
@@ -192,7 +192,6 @@ const refreshAccessToken=asyncHandler(async(req,res)=>{
     if(!user){
       throw new ApiError(401,"Invalid refresh token ")
     }
-
     if(incomingRefreshToken !==user?.refreshToken){
       throw new ApiError(401,"Refesh Token Expired or used")
     }
@@ -249,7 +248,7 @@ const changeCurrentPassword=asyncHandler(async(req,res)=>{
 const getCurrentUser = asyncHandler(async(req,res)=>{
      return res
       .status(200)
-      .json(new ApiResponse(200,res.user,"Current User fetched Successfully"))  
+      .json(new ApiResponse(200,req.user,"Current User fetched Successfully"))  
 })
 
 const updateAccountDetails = asyncHandler(async(req,res)=>{
@@ -273,7 +272,7 @@ const updateAccountDetails = asyncHandler(async(req,res)=>{
 
    return res
    .status(200)
-   .json(200,user,"Account details updated successfully")
+   .json(new ApiResponse(200,user,"Account details updated successfully"))
 })
 
 const updateUserAvatar = asyncHandler(async(req,res)=>{
@@ -289,9 +288,10 @@ const updateUserAvatar = asyncHandler(async(req,res)=>{
     if(!avatar.url){
       throw new ApiError(400,"Error while uploading on avatar ")
     }
-      try {
-      await cloudinary.uploader.destroy(req.user?.avatar);
-     }catch{ }
+
+    if(req.user?.avatar){
+    deleteOnCloudinary(req.user.avatar)
+    }
 
     const user = await User.findByIdAndUpdate(
       req.user?._id,
@@ -309,7 +309,7 @@ const updateUserAvatar = asyncHandler(async(req,res)=>{
 })
 
 const updateUserCoverImage = asyncHandler(async(req,res) =>{
-  
+
   const coverImageLocalPath = req.file?.path
 
     if(!coverImageLocalPath){
@@ -317,19 +317,19 @@ const updateUserCoverImage = asyncHandler(async(req,res) =>{
     } 
 
  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
-    
- if(!coveerImage.url){
+
+ if(!coverImage.url){
       new ApiError(400,"Error while uploading on cover Image")
     }
- 
-    try {
-      await cloudinary.uploader.destroy(req.user?.coverImage);
-    }catch{ }
+
+    if(req.user?.coverImage){
+      deleteOnCloudinary(req.user.coverImage)
+      }
 
     const user = await User.findByIdAndUpdate(
-      req.body?._id,
+      req.user?._id,
       {
-        coverImage : coveerImage.url
+        coverImage : coverImage.url
       },
       {new : true}
     ).select("-password")
