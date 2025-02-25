@@ -27,7 +27,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
  }
 
      // Aggregate query to find comments for the given videoId
-     const aggregateQuery = Comment.aggregate([
+     const aggregateQuery = await Comment.aggregate([
         {
           $match : { 
              video: new mongoose.Types.ObjectId(videoId)
