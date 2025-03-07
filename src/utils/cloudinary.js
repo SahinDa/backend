@@ -27,21 +27,51 @@ import fs from "fs";
         }
     }
 
-    const extractPublicIdFromUrl = (url) => {
-        // Split the URL and extract the public ID
-        const segments = url.split('/');
-        const publicIdWithVersion = segments[segments.length - 1].split('.')[0];
-        return publicIdWithVersion;
-      };
+const extractPublicIdFromUrl = (url) => {
+  if (!url) return null;
 
-    const deleteOnCloudinary=async(remotefile)=>{
-        try {
-            const publicId = extractPublicIdFromUrl(remotefile);
-            const response = await cloudinary.uploader.destroy(publicId);
-            }catch(err){
-             console.error('Error while deleting image from Cloudinary:', err);
-             }
-    }
+  const parts = url.split("/upload/");
+  if (parts.length < 2) return null;
+
+  let publicId = parts[1].split(".")[0]; // Remove file extension
+
+  // Remove version prefix (e.g., v1741383854/)
+  publicId = publicId.replace(/^v\d+\//, "");
+
+  return publicId;
+};
+
+const deleteOnCloudinary = async (remoteFile) => {
+  try {
+      if (!remoteFile) {
+          console.error("No file URL provided for deletion.");
+          return false;
+      }
+
+      const publicId = extractPublicIdFromUrl(remoteFile);
+      if (!publicId) {
+          console.error("Invalid file URL, could not extract publicId.");
+          return false;
+      }
+
+      // Determine resource type based on file extension
+      const isVideo = remoteFile.match(/\.(mp4|mov|avi|mkv|webm)$/i);
+      const resourceType = isVideo ? "video" : "image"; // Explicit type
+
+      console.log(`Attempting to delete: ${publicId}, Type: ${resourceType}`);
+
+      const response = await cloudinary.uploader.destroy(publicId, {
+          resource_type: resourceType,
+      });
+
+      console.log("Cloudinary Delete Response:", response);
+      return response.result === "ok"; // Return true if deleted
+  } catch (err) {
+      console.error("Error deleting from Cloudinary:", err);
+      return false;
+  }
+};
+
 
 
     export {uploadOnCloudinary ,deleteOnCloudinary};
